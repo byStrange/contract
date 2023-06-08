@@ -1,0 +1,215 @@
+{%extends './base.html' %} {% block content %}
+
+<div class="container-fluid">
+  <table class="table" style="min-width: 1300px">
+    <thead>
+      <tr>
+        <th>Markasi</th>
+        <th>Avtomobil raqami</th>
+        <th>Narxi</th>
+        <th>Foizi</th>
+        <th>Oyligi</th>
+        <th>Sanasi</th>
+        <th>Ismi</th>
+        <th>Manzili</th>
+        <th>Telefon raqami</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      {% for contract in contracts %}
+       {% now 'd' as currentday %}
+       {% now 'Y-m-d' as today %}
+      <tr
+        data-info="{ 'price': {{ contract.car_price}}, 'length': {{ contract.length }}, 'percentage': {{ contract.percentage }} }"
+        class="{% if contract.created_at|date:'d' == currentday %}table-warning {% elif contract.end_date|date:'Y-m-d' == today %}table-danger{%endif%}"
+      >
+        <td>{{ contract.car_model }}</td>
+        <td>{{ contract.car_number }}</td>
+        <td>{{ contract.car_price }}</td>
+        <td>{{ contract.percentage }}</td>
+        <td id="contractLength">{{ contract.length }}</td>
+        <td>{{ contract.created_at }}</td>
+        <td>{{ contract.name }}</td>
+        <td>{{ contract.address }}</td>
+        <td>{{ contract.phone_number }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td>
+          <input
+            type="text"
+            placeholder="avtomobil turi"
+            class="form-control"
+            id="car_type"
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            placeholder="avtomobil raqami"
+            class="form-control"
+            id="car_number"
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            placeholder="narxi"
+            class="form-control"
+            id="price"
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            placeholder="foizi"
+            class="form-control"
+            id="percentage"
+          />
+        </td>
+        <td>
+          <select id="length" class="form-control">
+            <option selected disabled>Oyligi</option>
+            <option value="1">1 oylik</option>
+            <option value="2">2 oylik</option>
+            <option value="3">3 oylik</option>
+            <option value="4">4 oylik</option>
+            <option value="5">5 oylik</option>
+            <option value="6">6 oylik</option>
+            <option value="7">7 oylik</option>
+            <option value="8">8 oylik</option>
+            <option value="9">9 oylik</option>
+            <option value="10">10 oylik</option>
+            <option value="11">11 oylik</option>
+            <option value="12">12 oylik</option>
+            <option value="18">18 oylik</option>
+            <option value="24">24 oylik</option>
+          </select>
+          -<span id="calculatedPrice"></span>
+        </td>
+        <td>
+          <button class="btn btn-outline-primary" id="calculate">
+            Hisoblash
+          </button>
+        </td>
+        <td>
+          <input
+            type="text"
+            placeholder="ismi"
+            class="form-control"
+            id="name"
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            placeholder="manzili"
+            class="form-control"
+            id="address"
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            placeholder="telefon raqami"
+            class="form-control"
+            id="phone_number"
+          />
+        </td>
+        <td>
+          <button class="btn btn-primary" id="createContract">Qo'shish</button>
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+<script>
+  var addButton = document.getElementById("createContract"),
+    calculateButton = document.getElementById("calculate");
+  function solve({ price, percentage, length }) {
+    var f = (price / 100) * percentage;
+    var cost = +price + f;
+    cost = cost / length;
+    return cost;
+  }
+  function calc() {
+    var price = +document.getElementById("price").value,
+      percentage = +document.getElementById("percentage").value,
+      length = document.getElementById("length").value,
+      calculatedPrice = document.getElementById("calculatedPrice");
+    calculatedPrice.innerText = solve({ price, percentage, length }) + "$";
+  }
+  calculateButton.addEventListener("click", function () {
+    calc();
+  });
+  function add() {
+    console.log("hi");
+    var car_type = document.getElementById("car_type").value,
+      car_number = document.getElementById("car_number").value,
+      price = document.getElementById("price").value,
+      percentage = document.getElementById("percentage").value,
+      length = document.getElementById("length").value,
+      name = document.getElementById("name").value,
+      address = document.getElementById("address").value,
+      phone_number = document.getElementById("phone_number").value,
+      tr = document.createElement("tr");
+    // Create a contract object
+    var contractData = {
+      car_model: car_type,
+      car_number: car_number,
+      car_price: price,
+      percentage: percentage,
+      length: length,
+      name: name,
+      address: address,
+      phone_number: phone_number,
+    };
+
+    fetch("http://127.0.0.1:8000/create-contract", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(contractData),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        tr.innerHTML += `
+                <td>${car_type}</td>
+                <td>${car_number}</td>
+                <td>${price}</td>
+                <td>${percentage}%</td>
+                <td>${length}-${solve({
+          price: +price,
+          percentage: +percentage,
+          length,
+        })}$</td>
+                <td>12.05.2023</td>
+                <td>${name}</td>
+                <td>${address}</td>
+                <td>${phone_number}</td>
+                `;
+        tbody = document.getElementById("tbody");
+        tbody.appendChild(tr);
+        console.log("Contract created successfully:", data);
+        // Do something with the response data
+      })
+      .catch((error) => {
+        console.error("Error creating contract:", error);
+        // Handle the error
+      });
+  }
+  addButton.addEventListener("click", add);
+  var contracts = document.querySelectorAll("#tbody > tr");
+  contracts.forEach((contract) => {
+    var data = contract.dataset.info;
+    data = data.replace(/'/g, `"`);
+    data = JSON.parse(data);
+    var price = solve(data);
+    contract.querySelector("#contractLength").innerText += "- " + price;
+  });
+</script>
+
+{% endblock %}
